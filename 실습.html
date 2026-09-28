@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>나만의 치이카와 만들기</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: #000 url('background.jpg') no-repeat center center / cover;
+      display: flex;
+    }
+
+    /* 왼쪽: 캐릭터 및 스테이지 영역 */
+    .stage-container {
+      position: relative;
+      flex: 1;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* 왼쪽 하단 메인 타이틀 */
+    .main-title {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #333;
+      text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.8), -2px -2px 8px rgba(255, 255, 255, 0.8);
+      z-index: 100;
+      pointer-events: none;
+      letter-spacing: -1px;
+    }
+
+    /* 캐릭터 캔버스 (1.6배) */
+    .character-canvas {
+      position: relative;
+      width: 600px;
+      height: 500px;
+      transform: scale(1.6);
+      transform-origin: center center;
+    }
+
+    /* 모든 레이어의 기본 공통 스타일 */
+    .layer {
+      position: absolute;
+      pointer-events: none;
+      object-fit: contain;
+      transform-origin: center center;
+    }
+
+    /* ==========================================
+       부품별 위치(Coordinate) 및 z-index 설정
+       ========================================== */
+
+    /* 1. 무기 */
+    .weapon-layer {
+      width: 140px;
+      top: 230px;
+      left: 10px;
+      transform: rotate(-5deg);
+    }
+    #weapon2 { z-index: 25; }  /* weapon2.png 무기 컬러 */
+    #weapon1 { z-index: 26; }  /* weapon1.png 무기 외곽선 */
+
+    /* 2. 귀 */
+    .ear-left {
+      width: 50px;
+      top: 105px;
+      left: 152px;
+    }
+    #ear2 { z-index: 10; } /* ear2.png 왼쪽 귀 컬러 */
+    #ear1 { z-index: 11; } /* ear1.png 왼쪽 귀 외곽선 */
+
+    .ear-right {
+      width: 50px;
+      top: 105px;
+      left: 270px;
+    }
+    #ear4 { z-index: 10; } /* ear4.png 오른쪽 귀 컬러 */
+    #ear3 { z-index: 11; } /* ear3.png 오른쪽 귀 외곽선 */
+
+    /* 3. 몸통 */
+    .body-layer {
+      width: 250px;
+      top: 130px;
+      left: 110px;
+    }
+    #body2 { z-index: 20; } /* body2.png 몸통 컬러 */
+    #body1 { z-index: 21; } /* body1.png 몸통 외곽선 */
+
+    /* 4. 눈, 눈썹 */
+    .eyebrow-left {
+      width: 15px;
+      top: 200px;
+      left: 190px;
+      z-index: 30;
+    }
+    .eyebrow-right {
+      width: 15px;
+      top: 200px;
+      left: 267px;
+      z-index: 30;
+    }
+
+    .eye-left {
+      width: 26px;
+      top: 227px;
+      left: 182px;
+      z-index: 40;
+    }
+    .eye-right {
+      width: 26px;
+      top: 227px;
+      left: 262px;
+      z-index: 40;
+    }
+
+    /* 5. 말풍선 및 텍스트 */
+    #talk {
+      width: 200px;
+      top: 70px;
+      left: 340px;
+      z-index: 70;
+    }
+    .talk-text {
+      position: absolute;
+      top: 80px;
+      left: 360px;
+      width: 140px;
+      height: 120px;
+      z-index: 80;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      word-break: break-all;
+      color: #333;
+    }
+
+    /* 오른쪽: 컨트롤 패널 영역 */
+    .control-panel {
+      width: 420px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 30px 25px;
+      overflow-y: auto;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .control-row label {
+      min-width: 90px;
+    }
+
+    /* 인풋 스타일링 */
+    input[type="text"] {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      border: none;
+      width: 40px;
+      height: 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      background: none;
+    }
+
+    .sub-group {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .sub-group input[type="range"] {
+      width: 50%;
+    }
+
+    .divider {
+      height: 1px;
+      background: rgba(0,0,0,0.1);
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 동적 색상 매핑용 SVG 필터 -->
+  <svg style="display:none;">
+    <defs>
+      <filter id="colorFilterBody">
+        <feColorMatrix type="matrix" id="matrixBody" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
+      </filter>
+      <filter id="colorFilterEar">
+        <feColorMatrix type="matrix" id="matrixEar" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
+      </filter>
+      <filter id="colorFilterWeapon">
+        <feColorMatrix type="matrix" id="matrixWeapon" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- 왼쪽: 캐릭터 출력 영역 -->
+  <div class="stage-container">
+    <!-- 왼쪽 하단 메인 타이틀 추가 -->
+    <h1 class="main-title">나만의 치이카와를 만들어보자!</h1>
+
+    <div class="character-canvas">
+      <!-- 1. 무기 레이어 -->
+      <img src="weapon2.png" id="weapon2" class="layer weapon-layer" alt="무기 컬러" style="filter: url(#colorFilterWeapon);">
+      <img src="weapon1.png" id="weapon1" class="layer weapon-layer" alt="무기 외곽선">
+
+      <!-- 2. 귀 레이어 -->
+      <img src="ear2.png" id="ear2" class="layer ear-left" alt="왼쪽 귀 컬러" style="filter: url(#colorFilterEar);">
+      <img src="ear1.png" id="ear1" class="layer ear-left" alt="왼쪽 귀 외곽선">
+      <img src="ear4.png" id="ear4" class="layer ear-right" alt="오른쪽 귀 컬러" style="filter: url(#colorFilterEar);">
+      <img src="ear3.png" id="ear3" class="layer ear-right" alt="오른쪽 귀 외곽선">
+
+      <!-- 3. 몸통 레이어 -->
+      <img src="body2.png" id="body2" class="layer body-layer" alt="몸통 컬러" style="filter: url(#colorFilterBody);">
+      <img src="body1.png" id="body1" class="layer body-layer" alt="몸통 외곽선">
+
+      <!-- 4. 눈, 눈썹 레이어 -->
+      <img src="eyebrow.png" id="eyebrowL" class="layer eyebrow-left" alt="왼쪽 눈썹">
+      <img src="eyebrow.png" id="eyebrowR" class="layer eyebrow-right" alt="오른쪽 눈썹">
+      <img src="eye.png" id="eyeL" class="layer eye-left" alt="왼쪽 눈">
+      <img src="eye.png" id="eyeR" class="layer eye-right" alt="오른쪽 눈">
+
+      <!-- 5. 말풍선 및 이름 텍스트 -->
+      <img src="talk.png" id="talk" class="layer" alt="말풍선">
+      <div id="talkText" class="talk-text"></div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 컨트롤 패널 -->
+  <div class="control-panel">
+    <div class="control-row">
+      <label for="inputName">이름</label>
+      <input type="text" id="inputName" placeholder="이름 입력...">
+    </div>
+
+    <div class="control-row">
+      <label for="bodyColor">몸 컬러</label>
+      <input type="color" id="bodyColor" value="#ffffff">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-row">
+      <label for="eyeSize">눈 크기</label>
+      <input type="range" id="eyeSize" min="50" max="150" value="100">
+    </div>
+    <div class="control-row">
+      <label for="eyePosY">눈 위치</label>
+      <input type="range" id="eyePosY" min="-50" max="50" value="0">
+    </div>
+
+    <div class="control-row">
+      <label for="eyebrowScaleX">눈썹 길이</label>
+      <input type="range" id="eyebrowScaleX" min="50" max="150" value="100">
+    </div>
+    <div class="control-row">
+      <label for="eyebrowPosY">눈썹 위치</label>
+      <input type="range" id="eyebrowPosY" min="-50" max="50" value="0">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-row">
+      <label for="earScale">귀 전체 크기</label>
+      <input type="range" id="earScale" min="50" max="150" value="100">
+    </div>
+
+    <div class="control-row">
+      <label for="earScaleY">귀 위아래 길이</label>
+      <input type="range" id="earScaleY" min="50" max="200" value="100">
+    </div>
+
+    <div class="control-row">
+      <label>귀 위치 (X)</label>
+      <div class="sub-group">
+        <input type="range" id="leftEarPosX" min="-50" max="50" value="0" title="왼쪽 귀 X">
+        <input type="range" id="rightEarPosX" min="-50" max="50" value="0" title="오른쪽 귀 X">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label>귀 위치 (Y)</label>
+      <div class="sub-group">
+        <input type="range" id="leftEarPosY" min="-50" max="50" value="0" title="왼쪽 귀 Y">
+        <input type="range" id="rightEarPosY" min="-50" max="50" value="0" title="오른쪽 귀 Y">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label for="earColor">귀 컬러</label>
+      <input type="color" id="earColor" value="#ffffff">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-row">
+      <label for="weaponColor">토벌창 컬러</label>
+      <input type="color" id="weaponColor" value="#5b9bd5">
+    </div>
+  </div>
+
+  <script>
+    // --- DOM 요소 참조 ---
+    const inputName = document.getElementById('inputName');
+    const talkText = document.getElementById('talkText');
+
+    const bodyColor = document.getElementById('bodyColor');
+    const earColor = document.getElementById('earColor');
+    const weaponColor = document.getElementById('weaponColor');
+
+    const matrixBody = document.getElementById('matrixBody');
+    const matrixEar = document.getElementById('matrixEar');
+    const matrixWeapon = document.getElementById('matrixWeapon');
+
+    const eyeL = document.getElementById('eyeL');
+    const eyeR = document.getElementById('eyeR');
+    const eyeSize = document.getElementById('eyeSize');
+    const eyePosY = document.getElementById('eyePosY');
+
+    const eyebrowL = document.getElementById('eyebrowL');
+    const eyebrowR = document.getElementById('eyebrowR');
+    const eyebrowScaleX = document.getElementById('eyebrowScaleX');
+    const eyebrowPosY = document.getElementById('eyebrowPosY');
+
+    const ear1 = document.getElementById('ear1');
+    const ear2 = document.getElementById('ear2');
+    const ear3 = document.getElementById('ear3');
+    const ear4 = document.getElementById('ear4');
+
+    const earScale = document.getElementById('earScale');
+    const earScaleY = document.getElementById('earScaleY');
+    const leftEarPosX = document.getElementById('leftEarPosX');
+    const rightEarPosX = document.getElementById('rightEarPosX');
+    const leftEarPosY = document.getElementById('leftEarPosY');
+    const rightEarPosY = document.getElementById('rightEarPosY');
+
+    // 1. 이름 입력 시 말풍선 실시간 반영
+    inputName.oninput = function() {
+      talkText.innerText = inputName.value;
+    };
+
+    // 2. SVG Color Matrix 색상 변환
+    function setMatrixColor(matrixElement, hexColor) {
+      let r = parseInt(hexColor.substring(1, 3), 16) / 255;
+      let g = parseInt(hexColor.substring(3, 5), 16) / 255;
+      let b = parseInt(hexColor.substring(5, 7), 16) / 255;
+
+      matrixElement.setAttribute('values', 
+        `0 0 0 0 ${r}  0 0 0 0 ${g}  0 0 0 0 ${b}  0 0 0 1 0`
+      );
+    }
+
+    // 초기 색상 설정
+    function initColors() {
+      setMatrixColor(matrixBody, bodyColor.value);
+      setMatrixColor(matrixEar, earColor.value);
+      setMatrixColor(matrixWeapon, weaponColor.value);
+    }
+
+    initColors();
+
+    bodyColor.oninput = function() { setMatrixColor(matrixBody, bodyColor.value); };
+    earColor.oninput = function() { setMatrixColor(matrixEar, earColor.value); };
+    weaponColor.oninput = function() { setMatrixColor(matrixWeapon, weaponColor.value); };
+
+    // 3. 눈 크기 및 높낮이(Y축) 조절
+    function updateEyeTransform() {
+      const scale = eyeSize.value / 100;
+      const posY = eyePosY.value;
+      const transformValue = `translateY(${posY}px) scale(${scale})`;
+      eyeL.style.transform = transformValue;
+      eyeR.style.transform = transformValue;
+    }
+    eyeSize.oninput = updateEyeTransform;
+    eyePosY.oninput = updateEyeTransform;
+
+    // 4. 눈썹 길이(X축 스케일) 및 높낮이(Y축) 조절
+    function updateEyebrowTransform() {
+      const scaleX = eyebrowScaleX.value / 100;
+      const posY = eyebrowPosY.value;
+      const transformValue = `translateY(${posY}px) scaleX(${scaleX})`;
+      eyebrowL.style.transform = transformValue;
+      eyebrowR.style.transform = transformValue;
+    }
+    eyebrowScaleX.oninput = updateEyebrowTransform;
+    eyebrowPosY.oninput = updateEyebrowTransform;
+
+    // 5. 귀 위치, 전체 크기 및 위아래 길이(Scale Y) 조절
+    function updateEarTransform() {
+      const baseScale = earScale.value / 100;
+      const scaleY = earScaleY.value / 100;
+      
+      const lx = leftEarPosX.value;
+      const ly = leftEarPosY.value;
+      
+      const rx = rightEarPosX.value;
+      const ry = rightEarPosY.value;
+
+      const leftTransform = `translate(${lx}px, ${ly}px) scale(${baseScale}, ${baseScale * scaleY})`;
+      ear1.style.transform = leftTransform;
+      ear2.style.transform = leftTransform;
+
+      const rightTransform = `translate(${rx}px, ${ry}px) scale(${baseScale}, ${baseScale * scaleY})`;
+      ear3.style.transform = rightTransform;
+      ear4.style.transform = rightTransform;
+    }
+
+    earScale.oninput = updateEarTransform;
+    earScaleY.oninput = updateEarTransform;
+    leftEarPosX.oninput = updateEarTransform;
+    rightEarPosX.oninput = updateEarTransform;
+    leftEarPosY.oninput = updateEarTransform;
+    rightEarPosY.oninput = updateEarTransform;
+  </script>
+</body>
+</html>
